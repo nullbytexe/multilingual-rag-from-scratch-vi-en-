@@ -6,9 +6,11 @@
 
 ## 📌 Overview
 
-This project implements a full **Retrieval-Augmented Generation (RAG)** pipeline that allows users to ask questions in **Vietnamese** and receive answers from an **English knowledge base**, with the final answer translated back to Vietnamese.
+This project implements a full **Retrieval-Augmented Generation (RAG)** pipeline that lets users ask questions in **Vietnamese** and get answers pulled from an **English knowledge base**, with the final answer translated back into Vietnamese.
 
-Every core component — the tokenizer, encoder, reranker, and BM25 — is built from scratch using PyTorch. The only pre-built components used are the translation models and the generative LLM.
+Every core component — the tokenizer, encoder, reranker, and BM25 — is built from scratch using PyTorch. The only pre-built components are the translation models and the generative LLM.
+
+Everything lives in a single notebook: **`rag_sys.ipynb`**.
 
 ---
 
@@ -51,45 +53,37 @@ Answer (Vietnamese)
 
 ---
 
-## 📊 Evaluation Results
+## 📊 Evaluation
 
-Evaluated on 100 random samples from SQuAD v1.1 validation split:
+Evaluation is run inline in the notebook on a sample of 100 questions from the SQuAD v1.1 validation split, reporting:
 
-| Metric | Score | Notes |
-|---|---|---|
-| Token F1 | — | Main generation quality metric |
-| BLEU-4 | — | Low by design (generative model, not extractive) |
-| ROUGE-L | — | Longest common subsequence overlap |
-| Recall@1 | — | Did top-1 chunk contain the answer? |
-| Recall@5 | — | Did top-5 chunks contain the answer? |
-| Recall@10 | — | Did top-10 chunks contain the answer? |
-| MRR@10 | — | Mean Reciprocal Rank of correct chunk |
+| Metric    | Notes                                            |
+| --------- | ------------------------------------------------ |
+| Token F1  | Main generation quality metric                   |
+| BLEU-4    | Low by design (generative model, not extractive) |
+| ROUGE-L   | Longest common subsequence overlap               |
+| Recall@1  | Did the top-1 chunk contain the answer?           |
+| Recall@5  | Did the top-5 chunks contain the answer?          |
+| Recall@10 | Did the top-10 chunks contain the answer?         |
+| MRR@10    | Mean Reciprocal Rank of the correct chunk         |
 
-> **Note on Exact Match (EM):** EM = 0 is expected for generative models. Qwen2.5 generates full sentences, not extracted spans. Token F1 and Recall@K are more meaningful metrics for this system. See the notebook for a detailed explanation.
+> **Note on Exact Match (EM):** EM = 0 is expected for this system. Qwen2.5 generates full sentences rather than extracting spans, so Token F1 and Recall@K are the more meaningful metrics here — see the evaluation section inside the notebook for the full explanation.
 
-*(Run the notebook to populate actual scores — they are saved to `evaluation_results_v2.csv`)*
+Run the notebook end-to-end to populate the actual scores and generated charts.
 
 ---
 
-## 🗂️ Project Structure
+## 🗂️ Repository Structure
 
 ```
-multilingual-rag-from-scratch/
+multilingual-rag-from-scratch-vi-en/
 │
-├── rag_improved_fixed.ipynb      # Main notebook — all modules and training
-├── requirements.txt              # Python dependencies
-├── README.md                     # This file
-│
-├── assets/                       # Evaluation charts (generated on run)
-│   ├── evaluation_metrics_v2.png
-│   ├── evaluation_summary_v2.png
-│   └── retrieval_analysis_v2.png
-│
-└── .gitignore
+├── rag_sys.ipynb      # Main (and only) notebook — all modules, training, and evaluation
+├── README.md          # This file
+└── LICENSE             # MIT license
 ```
 
-> **Generated files** (not committed to Git — created when you run the notebook):
-> `bpe_tokenizer_v2.json`, `bi_encoder_v2.pt`, `cross_encoder_v2.pt`, `evaluation_results_v2.csv`, `rag_summary_v2.json`
+> **Generated at runtime** (not committed to the repo — created when you run the notebook): trained tokenizer/model checkpoints, evaluation result CSVs, and evaluation charts. Since there's no `requirements.txt` yet, install dependencies as you hit `import` errors, or export your own `pip freeze` after your first successful run.
 
 ---
 
@@ -100,15 +94,23 @@ multilingual-rag-from-scratch/
 - Python 3.9+
 - CUDA GPU recommended (tested on Colab/Kaggle with T4/A100)
 - ~15–20GB disk space for datasets and model weights
-- ~8GB VRAM minimum (4-bit quantization auto-enabled if VRAM < 16GB)
+- ~8GB VRAM minimum (4-bit quantization recommended if VRAM < 16GB)
 
 ### Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/multilingual-rag-from-scratch.git
-cd multilingual-rag-from-scratch
-pip install -r requirements.txt
+git clone https://github.com/nullbytexe/multilingual-rag-from-scratch-vi-en.git
+cd multilingual-rag-from-scratch-vi-en
 ```
+
+Install the core dependencies used across the notebook:
+
+```bash
+pip install torch transformers datasets faiss-cpu sentencepiece \
+            nltk rouge-score sacrebleu matplotlib pandas huggingface_hub
+```
+
+(Swap `faiss-cpu` for `faiss-gpu` if you have CUDA set up for it.)
 
 ### HuggingFace Login (required for Qwen2.5)
 
@@ -116,7 +118,7 @@ pip install -r requirements.txt
 huggingface-cli login
 ```
 
-You need to accept the model license at: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct
+You'll need to accept the model license at: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct
 
 ---
 
@@ -124,38 +126,38 @@ You need to accept the model license at: https://huggingface.co/Qwen/Qwen2.5-1.5
 
 ### On Google Colab (recommended)
 
-1. Upload `rag_improved_fixed.ipynb` to Colab
-2. Set runtime to **GPU** (T4 or better)
+1. Upload `rag_sys.ipynb` to Colab
+2. Set the runtime to **GPU** (T4 or better)
 3. Run `!huggingface-cli login` with your HF token
-4. Run all cells in order
+4. Run all cells in order, top to bottom
 
 ### On Kaggle
 
 1. Upload the notebook
-2. Enable GPU accelerator
+2. Enable the GPU accelerator
 3. Add your `HF_TOKEN` to Kaggle Secrets
 4. Run all cells
 
 ### Locally
 
 ```bash
-jupyter notebook rag_improved_fixed.ipynb
+jupyter notebook rag_sys.ipynb
 ```
 
-> First run will download ~8GB of model weights. Subsequent runs load from cache.
+> First run downloads several GB of datasets and model weights. Subsequent runs are faster once things are cached locally.
 
 ---
 
 ## 📦 Datasets Used
 
-| Dataset | Purpose | Size |
-|---|---|---|
-| WikiText-103 | BPE tokenizer training | ~400K lines |
-| MS MARCO v1.1 | Bi-Encoder + Cross-Encoder training | 500K / 200K pairs |
-| SQuAD v1.1 train | RAG corpus | ~87K passages |
-| SQuAD v1.1 validation | Evaluation | 100 sampled QA pairs |
+| Dataset               | Purpose                             | Size                 |
+| --------------------- | ------------------------------------ | --------------------- |
+| WikiText-103          | BPE tokenizer training               | ~400K lines           |
+| MS MARCO v1.1         | Bi-Encoder + Cross-Encoder training  | 500K / 200K pairs     |
+| SQuAD v1.1 train      | RAG corpus                           | ~87K passages          |
+| SQuAD v1.1 validation | Evaluation                           | 100 sampled QA pairs   |
 
-All datasets are downloaded automatically via HuggingFace `datasets` on first run.
+All datasets are downloaded automatically via the HuggingFace `datasets` library on first run.
 
 ---
 
@@ -175,40 +177,40 @@ result = rag_pipeline('Khi nào sự kiện Super Bowl 50 được tổ chức?'
 
 ## 🔧 Configuration
 
-Key hyperparameters (in the notebook):
+Key hyperparameters (set near the top of the notebook):
 
-| Parameter | Value | Description |
-|---|---|---|
-| `D_MODEL` | 384 | Transformer hidden dimension |
-| `N_LAYERS` | 6 | Number of Transformer encoder layers |
-| `N_HEAD` | 8 | Number of attention heads |
-| `alpha` | 0.6 | Hybrid retrieval weight (dense vs sparse) |
-| `CHUNK_SIZE` | 150 | Words per document chunk |
-| `CHUNK_OVERLAP` | 30 | Overlap between chunks |
-| `top_k_retrieve` | 20 | Candidates from hybrid retrieval |
-| `top_k_rerank` | 5 | Top chunks after cross-encoder reranking |
+| Parameter        | Value | Description                                |
+| ----------------- | ----- | ------------------------------------------- |
+| `D_MODEL`         | 384   | Transformer hidden dimension                 |
+| `N_LAYERS`        | 6     | Number of Transformer encoder layers         |
+| `N_HEAD`          | 8     | Number of attention heads                    |
+| `alpha`           | 0.6   | Hybrid retrieval weight (dense vs sparse)    |
+| `CHUNK_SIZE`      | 150   | Words per document chunk                     |
+| `CHUNK_OVERLAP`   | 30    | Overlap between chunks                       |
+| `top_k_retrieve`  | 20    | Candidates from hybrid retrieval             |
+| `top_k_rerank`    | 5     | Top chunks kept after cross-encoder reranking |
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Component | Technology |
-|---|---|
-| Deep Learning | PyTorch |
-| Transformers | HuggingFace `transformers` |
-| Dense Index | FAISS (IVFFlat) |
-| Datasets | HuggingFace `datasets` |
-| Evaluation | NLTK, rouge-score, sacrebleu |
-| Visualization | Matplotlib, Pandas |
+| Component     | Technology                     |
+| -------------- | -------------------------------- |
+| Deep Learning  | PyTorch                          |
+| Transformers   | HuggingFace `transformers`       |
+| Dense Index    | FAISS (IVFFlat)                  |
+| Datasets       | HuggingFace `datasets`           |
+| Evaluation     | NLTK, rouge-score, sacrebleu     |
+| Visualization  | Matplotlib, Pandas               |
 
 ---
 
 ## 📝 Notes and Limitations
 
-- **EM = 0 is expected.** This system uses a generative model, not an extractive span predictor. See the in-notebook explanation under the evaluation section.
-- **First run is slow.** BPE training (~400K lines), Bi-Encoder training (3 epochs, 500K pairs), and Cross-Encoder training (2 epochs, 400K pairs) can take several hours on a T4 GPU. Subsequent runs load from saved checkpoints.
-- **Translation quality** affects retrieval. Errors in Vi→En translation propagate through the pipeline. Complex or idiomatic Vietnamese questions may produce lower-quality results.
-- **No re-training needed.** All trained model files (`.pt`, `.json`) are saved locally after the first run.
+- **EM = 0 is expected.** This system uses a generative model, not an extractive span predictor — see the in-notebook explanation in the evaluation section.
+- **First run is slow.** BPE training (~400K lines), Bi-Encoder training (500K pairs), and Cross-Encoder training (200K pairs) can take a while on a single T4 GPU. Subsequent runs are faster once checkpoints are cached.
+- **Translation quality matters.** Errors in Vi→En translation propagate through the whole pipeline — complex or idiomatic Vietnamese questions may produce lower-quality results.
+- **Single-notebook design.** There's currently no `requirements.txt` or packaged Python module — everything, including dependency installs, happens inside `rag_sys.ipynb`.
 
 ---
 
